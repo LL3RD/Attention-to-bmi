@@ -6,7 +6,7 @@ sys.path.append('/home/benkesheng/BMI_DETECT/')
 import torch
 import torch.nn as nn
 
-from torchvision import models, transforms
+from torchvision import models
 import numpy as np
 
 import random
