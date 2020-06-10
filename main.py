@@ -1,4 +1,4 @@
-from TypeNet import CBAMResnet50, CBAMResnet101, CBAMDensenet121, SEResnet101,SEDensenet121, SKNet101, Resnet101
+from TypeNet import *
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -10,8 +10,8 @@ from torchvision import models
 parser = argparse.ArgumentParser(description='PyTorch BMI')
 setup_seed(0)
 
-parser.add_argument('--datasetmode',default='4C',type=str,help='Type of dataset')
-parser.add_argument('--save-dir',default='Rensenet101_4C',type=str,help='path to save models and state')
+parser.add_argument('--datasetmode',default='3C',type=str,help='Type of dataset')
+parser.add_argument('--save-dir',default='SEDensenet169_3CWithMask_Dropout',type=str,help='path to save models and state')
 
 
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -34,7 +34,7 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--seed', default=0, type=int,
                     help='seed for initializing training. ')
-parser.add_argument('--gpu', default='0', type=str,
+parser.add_argument('--gpu', default='1', type=str,
                     help='GPU id to use.')
 
 
@@ -59,14 +59,14 @@ def main():
     train_loader, val_loader, test_loader = get_dataloader(args.batch_size,args)
 
     # Pred_dict = torch.load('/home/benkesheng/BMI_DETECT/ReDone_CSV/model/densenet121.pkl')
-    Pred_dict = torch.load('/home/benkesheng/BMI_DETECT/ReDone_CSV/model/Ours.pkl')
-    # Pred_dict = models.densenet121(pretrained=True).state_dict()
-    model = Resnet101()
+    # Pred_dict = torch.load('/home/benkesheng/BMI_DETECT/ReDone_CSV/model/Ours.pkl')
+    Pred_dict = models.densenet121(pretrained=True).state_dict()
+    model = Densenet121()
     # model.load_state_dict(Pred_dict)
     # print(model)
 
     model_dict = model.state_dict()
-    Pred_dict = {k: v for k, v in Pred_dict.items() if k in model_dict  and (k != 'fc.6.weight' and k != 'fc.6.bias'and k != 'fc.8.weight' and k != 'conv1.weight')}
+    Pred_dict = {k: v for k, v in Pred_dict.items() if k in model_dict }# and (k != 'fc.6.weight' and k != 'fc.6.bias'and k != 'fc.8.weight' and k != 'conv1.weight')}
     model_dict.update(Pred_dict)
     model.load_state_dict(model_dict)
 
@@ -79,8 +79,8 @@ def main():
     scheduler = optim.lr_scheduler.StepLR(optimizer, 30, 0.1)
 
     trainer = Trainer(model, DEVICE, optimizer, criterion, save_dir=args.save_dir)
-    # trainer.load('Densenet121_3CWithMask/model_epoch_40.ckpt')
-    trainer.Loop(100, train_loader, val_loader, scheduler)
+    trainer.load('Densenet121_3C/best_model.ckpt')
+    # trainer.Loop(100, train_loader, val_loader, scheduler)
     trainer.test(test_loader)
 
 

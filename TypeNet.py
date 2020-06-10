@@ -3,7 +3,7 @@ from Resnet import Bottleneck
 from SENET import SEBottleneck
 from CBAM import CBAMBottleneck
 import torch.nn as nn
-from Densenet import SEDensenet121, CBAMDensenet121
+from Densenet import SEDensenet121, CBAMDensenet121, Densenet169, Densenet121, SEDensenet169
 from SKNet import SKNet
 from torchvision.models import resnext101_32x8d
 
