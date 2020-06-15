@@ -7,6 +7,7 @@ from torch.jit.annotations import List
 import torch.utils.checkpoint as cp
 from SENET import SELayer
 from CBAM import CBAM
+from SKNet import SKLayer
 
 
 class _DenseLayer(nn.Module):  # 这个就跟ResNet 的bottleneck一样
@@ -102,17 +103,25 @@ class _DenseBlock(nn.ModuleDict):
                 mode=mode,
             )
             self.add_module('denselayer%d' % (i + 1), layer)
-        if mode == 'se':
-            self.add_module('se',SELayer(channel=growth_rate))
-        elif mode == 'cbam':
-            self.add_module(('cbam', CBAM(growth_rate)))
+        # self.mode = mode
+        # if self.mode == 'se':
+        #     self.SELayer = SELayer(num_input_features+num_layers*growth_rate)
+        # elif self.mode == 'cbam':
+        #     self.CBAMLayer = CBAM()
 
     def forward(self, init_features):
         features = [init_features]
+        # print(self.items())
         for name, layer in self.items():
             new_features = layer(features)
             features.append(new_features)
-        return torch.cat(features, 1)
+        out = torch.cat(features, 1)
+        # print(type(out))
+        # if self.mode == 'se':
+        #     out = self.SELayer(out)
+        # elif self.mode == 'cbam':
+        #     out = self.CBAMLayer(out)
+        return out
 
 
 class _Transition(nn.Sequential):  # 过渡层，防止channel太多
@@ -129,8 +138,10 @@ class _Transition(nn.Sequential):  # 过渡层，防止channel太多
 
 class DenseNet(nn.Module):
     def __init__(self, growth_rate=32, block_config=(6, 12, 24, 16),
-                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1, memory_efficient=True, deep_stem=False, mode=None):
+                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1, memory_efficient=True, deep_stem=False,
+                 mode=None):
         super(DenseNet, self).__init__()
+
         if deep_stem:
             self.features = nn.Sequential(OrderedDict([
                 ('conv0_3', nn.Conv2d(3, num_init_features, kernel_size=3, stride=2,
@@ -173,6 +184,12 @@ class DenseNet(nn.Module):
             )
             self.features.add_module('denseblock%d' % (i + 1), block)
             num_features = num_features + num_layers * growth_rate
+            # if mode == 'se':
+            #     self.features.add_module('SELayer%d' % (i + 1), SELayer(num_features))
+            # elif mode == 'cbam':
+            #     self.features.add_module('CBAMLayer%d' % (i + 1), CBAM(num_features))
+            # elif mode == 'sk':
+            #     self.features.add_module('SKLayer%d' % (i + 1), SKLayer(num_features, G=1))
 
             if i != len(block_config) - 1:  # 如果不是最后一层
                 trans = _Transition(num_input_features=num_features,
@@ -180,18 +197,22 @@ class DenseNet(nn.Module):
                 self.features.add_module('transition%d' % (i + 1), trans)
                 num_features = num_features // 2
 
+                if mode == 'se':
+                    self.features.add_module('SELayer%d' % (i + 1), SELayer(num_features))
+                elif mode == 'cbam':
+                    self.features.add_module('CBAMLayer%d' % (i + 1), CBAM(num_features))
+                elif mode == 'sk':
+                    self.features.add_module('SKLayer%d' % (i + 1), SKLayer(num_features, G=1))
+
         self.features.add_module('norm5', nn.BatchNorm2d(num_features))
 
         self.classifier = nn.Sequential(
             nn.Linear(num_features, num_features // 2),
             nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
             nn.Linear(num_features // 2, num_features // 4),
             nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
             nn.Linear(num_features // 4, num_features // 8),
             nn.ReLU(inplace=True),
-            # nn.Dropout(p=0.5),
             nn.Linear(num_features // 8, num_classes),
         )
 
@@ -220,22 +241,32 @@ def _densenet(arch, growth_rate, block_config, num_init_features, mode,
     return model
 
 
-def Densenet121(mode=None,**kwargs):
+def Densenet121(mode=None, **kwargs):
+    __name__ = 'Densenet121'
     return _densenet('densenet121', 32, (6, 12, 24, 16), 64, mode,
                      **kwargs)
 
-def Densenet169(mode=None,**kwargs):
+
+def Densenet169(mode=None, **kwargs):
     return _densenet('densenet169', 32, (6, 12, 32, 32), 64, mode,
                      **kwargs)
 
-def SEDensenet121(mode='se',**kwargs):
-    return _densenet('sedensenet121', 32, (6, 12, 24, 16), 64,mode,
+
+def SEDensenet121(mode='se', **kwargs):
+    return _densenet('sedensenet121', 32, (6, 12, 24, 16), 64, mode,
                      **kwargs)
 
-def SEDensenet169(mode='se',**kwargs):
-    return _densenet('sedensenet121', 32, (6, 12, 32, 32), 64,mode,
+
+def SEDensenet169(mode='se', **kwargs):
+    return _densenet('sedensenet121', 32, (6, 12, 32, 32), 64, mode,
                      **kwargs)
 
-def CBAMDensenet121(mode='cbam',**kwargs):
+
+def CBAMDensenet121(mode='cbam', **kwargs):
     return _densenet('cbamdensenet121', 32, (6, 12, 24, 16), 64, mode,
+                     **kwargs)
+
+
+def SKDensenet121(mode='sk',**kwargs):
+    return _densenet('skdensenet121', 32, (6, 12, 24, 16), 64, mode,
                      **kwargs)
