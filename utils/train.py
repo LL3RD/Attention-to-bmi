@@ -38,14 +38,20 @@ class Trainer(object):
         self.save_freq = save_freq
         self.best_error = 100
 
-    def _iteration(self, dataloader, epoch, mode='Test', ):
+    def _iteration(self, dataloader, epoch, mode='Test', sex='Overall'):
         epoch_time = AverageMeter('Time')
         losses = AverageMeter('Loss')
         error = AverageMeter('MAE')
         mape = AverageMeter('MAPE')
+        if sex != 'Overall' and mode == 'Test':
+            male_error = AverageMeter('Male_MAE')
+            male_mape = AverageMeter('Male_MAPE')
+            female_error = AverageMeter('Female_MAE')
+            female_mape = AverageMeter('Female_MAPE')
         t = time.time()
 
-        for data, target in dataloader:
+        for data, targets in dataloader:
+            F_M, target = targets
             data, target = data.to(self.DEVICE), target.to(self.DEVICE)
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -57,6 +63,14 @@ class Trainer(object):
             error.update(error_)
             mape_ = mean_absolute_percentage_error(target.detach().cpu().numpy(), output.detach().cpu().numpy())
             mape.update(mape_)
+
+            if sex != 'Overall' and mode == 'Test':
+                if F_M == 1:
+                    male_error.update(error_)
+                    male_mape.update(mape_)
+                elif F_M == 0:
+                    female_error.update(error_)
+                    female_mape.update(mape_)
 
             if mode == "Train":
                 loss.backward()
@@ -72,6 +86,14 @@ class Trainer(object):
             'MAPE: %.4f (%.4f)' % (mape.val, mape.avg),
         ])
         print(result)
+        if sex != 'Overall' and mode == 'Test':
+            dif_sex_result = '\t'.join([
+                'Male_MAE: %.4f' % male_error.avg,
+                'Male_MAPE: %.2f' % male_mape.avg,
+                'Female_MAE: %.4f' % female_error.avg,
+                'Female_MAPE: %.2f' % female_mape.avg,
+            ])
+            print(dif_sex_result)
 
         if mode == "Val":
             is_best = error.avg < self.best_error
@@ -93,7 +115,6 @@ class Trainer(object):
                     'optimizer': self.optimizer.state_dict(),
                 }, epoch=epoch, mode='normal')
 
-
         return mode, epoch_time.avg, losses.avg, error.avg, mape.avg
 
     def train(self, dataloader, epoch, mode='Train'):
@@ -102,11 +123,11 @@ class Trainer(object):
             mode, t, loss, error, mape = self._iteration(dataloader, epoch=epoch, mode=mode)
             return mode, t, loss, error, mape
 
-    def test(self, dataloader, epoch=None, mode='Test'):
+    def test(self, dataloader, epoch=None, mode='Test', sex='Overall'):
         self.model.eval()
 
         with torch.no_grad():
-            mode, t, loss, error, mape = self._iteration(dataloader, epoch=epoch, mode=mode)
+            mode, t, loss, error, mape = self._iteration(dataloader, epoch=epoch, mode=mode, sex=sex)
             return mode, t, loss, error, mape
 
     def Loop(self, epochs, trainloader, testloader, scheduler=None):

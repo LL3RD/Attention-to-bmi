@@ -48,9 +48,10 @@ class OurDatasets(data.Dataset):
             img_c = img
 
         ret = re.match(r"\d+?_([FMfm])_(\d+?)_(\d+?)_(\d+).+", img_name)
+        sex = 0 if (ret.group(1) == 'F' or ret.group(1) == 'f') else 1
         BMI = torch.from_numpy(np.asarray((int(ret.group(4)) / 100000) / (int(ret.group(3)) / 100000) ** 2))
 
-        return img_c, BMI
+        return img_c, (sex, BMI)
 
 
 '''
