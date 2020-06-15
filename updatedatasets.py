@@ -4,6 +4,8 @@ from Visual import Visual
 from Detected import Image_Processor
 import cv2
 import matplotlib.pyplot as plt
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from utils import *
 
@@ -11,35 +13,37 @@ setup_seed(20)
 
 mask_model = "/home/benkesheng/BMI_DETECT/pose2seg_release.pkl"
 keypoints_model = "COCO-Keypoints/keypoint_rcnn_R_101_FPN_3x.yaml"
-# P = Image_Processor(mask_model, keypoints_model)
+P = Image_Processor(mask_model, keypoints_model)
 
-Detect_Path = '/home/benkesheng/BMI_DETECT/datasets/'
-datasets = ['Image_train', 'Image_val', 'Image_test']
-mask_datasets = ['Image_train_mask', 'Image_val_mask', 'Image_test_mask']
+Detect_Path = '/home/benkesheng/BMI_DETECT/author_datasets/'
+datasets = ['Single_train', 'Single_val', 'Single_test']
+mask_datasets = ['Single_train_mask', 'Single_val_mask', 'Single_test_mask']
 
-for set in datasets:
-    img_names = os.listdir(Detect_Path+set)
-    for img_name in img_names:
-        mask_name = 'Mask_'+img_name
-        img_path = os.path.join(Detect_Path,set,img_name)
-        img_mask_path = os.path.join(Detect_Path,set+'_mask',mask_name)
-        img = cv2.imread(img_path)[:,:,::-1]
-        img_mask = cv2.imread(img_mask_path)
-        img_mask = img_mask//255
-        print(img_mask.shape)
-        img_c = img*(img_mask==0)
-        plt.imshow(img_c)
-        plt.show()
-        break
-    break
+# for set in datasets:
+#     img_names = os.listdir(Detect_Path+set)
+#     for img_name in img_names:
+#         mask_name = 'Mask_'+img_name
+#         img_path = os.path.join(Detect_Path,set,img_name)
+#         img_mask_path = os.path.join(Detect_Path,set+'_mask',mask_name)
+#         img = cv2.imread(img_path)[:,:,::-1]
+#         img_mask = cv2.imread(img_mask_path)
+#         img_mask = img_mask//255
+#         print(img_mask.shape)
+#         img_c = img*(img_mask==0)
+#         plt.imshow(img_c)
+#         plt.show()
+#         break
+#     break
 
 
-'''
-Create the Mask channel
+
+# Create the Mask channel
 
 for set, maskset in zip(datasets, mask_datasets):
     set_path = os.path.join(Detect_Path, set)
     maskset_path = os.path.join(Detect_Path, maskset)
+    if not os.path.exists(maskset_path):
+        os.mkdir(maskset_path)
     img_names = os.listdir(set_path)
 
     for img_name in img_names:
@@ -60,7 +64,7 @@ for set, maskset in zip(datasets, mask_datasets):
         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
         cv2.imwrite(img_path_mask, image)
-'''
+
 
 
 
