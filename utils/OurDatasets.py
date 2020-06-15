@@ -1,7 +1,6 @@
 import torch.utils.data as data
 from utils.utils import *
 import os
-from PIL import Image
 import re
 import cv2
 

@@ -125,6 +125,7 @@ class SELayer(nn.Module):
         )
 
     def forward(self, x):
+        # print(type(x))
         b, c, _, _ = x.size()  # batchsize*C*H*W
         y = self.avg_pool(x).view(b, c)  # 经过一个avgpooling层之后 H*W -> 1*1
         y = self.fc(y).view(b, c, 1, 1)

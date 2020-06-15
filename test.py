@@ -2,7 +2,6 @@ import sys
 
 sys.path.append('/home/benkesheng/BMI_DETECT/')
 
-
 import torch
 import torch.nn as nn
 
@@ -21,17 +20,23 @@ def setup_seed(seed):
 
 
 setup_seed(0)
-
-Pred_Net = models.AlexNet()
-
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam([
-    {'params': Pred_Net.parameters()}
-], lr=0.0001)
-
-print(optimizer.state_dict()['param_groups'][0])
+print(random.random())
+# x = models.densenet121()
+# from TypeNet import *
+# print(SKDensenet121())
 
 
+# summary(model,  (3, 224, 224))
+# torch.rand((1,3,224,224))
+
+# Pred_Net = models.AlexNet()
+#
+# criterion = nn.MSELoss()
+# optimizer = torch.optim.Adam([
+#     {'params': Pred_Net.parameters()}
+# ], lr=0.0001)
+#
+# print(optimizer.state_dict()['param_groups'][0])
 
 
 # END_EPOCH = 0

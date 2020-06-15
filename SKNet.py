@@ -14,7 +14,7 @@ def conv1x1(in_planes, out_planes, stride=1):
 
 
 class SKLayer(nn.Module):
-    def __init__(self, features, M=2, G=32, r=16, stride=1, L=32):
+    def __init__(self, features, M=2, G=8, r=2, stride=1, L=32):
         '''
         :param features: 输入
         :param M:  分支数， 这里就用两个，分别对应kernel=3*3 5*5

@@ -29,7 +29,7 @@ class AverageMeter(object):
 class Trainer(object):
     torch.backends.cudnn.benchmark = True
 
-    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=20):
+    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=10):
         self.DEVICE = DEVICE
         self.model = model.to(self.DEVICE)
         self.optimizer = optimizer
@@ -45,7 +45,7 @@ class Trainer(object):
         mape = AverageMeter('MAPE')
         t = time.time()
 
-        for data, target in tqdm(dataloader):
+        for data, target in dataloader:
             data, target = data.to(self.DEVICE), target.to(self.DEVICE)
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -84,8 +84,6 @@ class Trainer(object):
                     'MAPE': mape.avg,
                     'optimizer': self.optimizer.state_dict(),
                 }, epoch=epoch, mode='best')
-
-        elif mode == 'Train':
             if (epoch % self.save_freq) == 0:
                 self.save_checkpoint(state={
                     "epoch": epoch,
@@ -94,6 +92,7 @@ class Trainer(object):
                     'MAPE': mape.avg,
                     'optimizer': self.optimizer.state_dict(),
                 }, epoch=epoch, mode='normal')
+
 
         return mode, epoch_time.avg, losses.avg, error.avg, mape.avg
 
