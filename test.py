@@ -1,35 +1,38 @@
 import sys
 
-sys.path.append('/home/benkesheng/BMI_DETECT/')
+sys.path.append('/home/ungraduate/hjj/BMI_DETECT/')
 
 import torch
 import torch.nn as nn
-
+from OurDatasets import *
+from TypeNet import *
 from torchvision import models
 import numpy as np
-
 import random
 
+model = SEDensenet121()
+model.load_state_dict(torch.load(
+    '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEDensenet121_3CWithMask_128_tran/model_epoch_50.ckpt')[
+                          'state_dict'])
+dataset = OurDatasets('/home/ungraduate/hjj/BMI_DETECT/datasets/Image_test', mode='3CWithMask', set='Our')
+test_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
+model.eval()
+with torch.no_grad():
+    for img, (name, targ) in test_loader:
+        out = model(img)
+        out = out.detach().cpu().numpy()
+        target = targ.detach().cpu().numpy()
+        if abs(out - target) <= 0.5:
+            print(name[0], '\tTruth:', target, '\tPred:', out)
 
-def setup_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+# for x,y in test_loader:
+#     print(x.shape)
+#     x = torch.squeeze(x).permute(1,2,0)
+#     plt.imshow(x)
+#     plt.show()
+#     break
 
 
-setup_seed(0)
-print(random.random())
-# x = models.densenet121()
-# from TypeNet import *
-# print(SKDensenet121())
-
-
-# summary(model,  (3, 224, 224))
-# torch.rand((1,3,224,224))
-
-# Pred_Net = models.AlexNet()
 #
 # criterion = nn.MSELoss()
 # optimizer = torch.optim.Adam([

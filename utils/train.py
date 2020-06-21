@@ -29,7 +29,7 @@ class AverageMeter(object):
 class Trainer(object):
     torch.backends.cudnn.benchmark = True
 
-    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=10):
+    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=50):
         self.DEVICE = DEVICE
         self.model = model.to(self.DEVICE)
         self.optimizer = optimizer
@@ -128,6 +128,7 @@ class Trainer(object):
 
         with torch.no_grad():
             mode, t, loss, error, mape = self._iteration(dataloader, epoch=epoch, mode=mode, sex=sex)
+            self.save_statistic(1, mode, t, loss, error, mape)
             return mode, t, loss, error, mape
 
     def Loop(self, epochs, trainloader, testloader, scheduler=None):
@@ -146,9 +147,9 @@ class Trainer(object):
             if not model_path.exists():
                 model_path.mkdir()
             if mode == 'normal':
-                torch.save(state, model_path / "model_epoch_{}.ckpt".format(epoch))
+                torch.save(state, os.path.join(self.save_dir, "model_epoch_{}.ckpt".format(epoch)))
             elif mode == 'best':
-                torch.save(state, model_path / "best_model.ckpt")
+                torch.save(state, os.path.join(self.save_dir, "best_model.ckpt"))
 
     def load(self, model_pth):
         checkpoint = torch.load(model_pth)
