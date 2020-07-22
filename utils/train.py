@@ -29,14 +29,18 @@ class AverageMeter(object):
 class Trainer(object):
     torch.backends.cudnn.benchmark = True
 
-    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=50):
+    def __init__(self, model, DEVICE, optimizer, criterion, save_dir=None, save_freq=50, mult_gpu=False, kpt_f=False):
         self.DEVICE = DEVICE
         self.model = model.to(self.DEVICE)
+        # self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
         self.save_dir = save_dir
         self.save_freq = save_freq
         self.best_error = 100
+        self.mult_gpu = mult_gpu
+
+        self.kpt_f = kpt_f
 
     def _iteration(self, dataloader, epoch, mode='Test', sex='Overall'):
         epoch_time = AverageMeter('Time')
@@ -52,9 +56,16 @@ class Trainer(object):
 
         for data, targets in dataloader:
             F_M, target = targets
+            if self.kpt_f:
+                data, kpt = data
+                kpt = kpt.to(self.DEVICE)
+            # data, target = data.cuda(), target.cuda()
             data, target = data.to(self.DEVICE), target.to(self.DEVICE)
             self.optimizer.zero_grad()
-            output = self.model(data)
+            if self.kpt_f:
+                output = self.model(data, kpt)
+            else:
+                output = self.model(data)
             target = torch.unsqueeze(target, 1)
             batch_size = target.size(0)
             loss = self.criterion(output.double(), target.double())
@@ -98,10 +109,14 @@ class Trainer(object):
         if mode == "Val":
             is_best = error.avg < self.best_error
             self.best_error = min(error.avg, self.best_error)
+            if self.mult_gpu:
+                MODEL = self.model.module
+            else:
+                MODEL = self.model
             if (is_best):
                 self.save_checkpoint(state={
                     "epoch": epoch,
-                    "state_dict": self.model.state_dict(),
+                    "state_dict": MODEL.state_dict(),
                     'MAE': self.best_error,
                     'MAPE': mape.avg,
                     'optimizer': self.optimizer.state_dict(),
@@ -109,7 +124,7 @@ class Trainer(object):
             if (epoch % self.save_freq) == 0:
                 self.save_checkpoint(state={
                     "epoch": epoch,
-                    "state_dict": self.model.state_dict(),
+                    "state_dict": MODEL.state_dict(),
                     'MAE': error.avg,
                     'MAPE': mape.avg,
                     'optimizer': self.optimizer.state_dict(),
@@ -128,7 +143,8 @@ class Trainer(object):
 
         with torch.no_grad():
             mode, t, loss, error, mape = self._iteration(dataloader, epoch=epoch, mode=mode, sex=sex)
-            self.save_statistic(1, mode, t, loss, error, mape)
+            if mode == 'Test':
+                self.save_statistic(1, mode, t, loss, error, mape)
             return mode, t, loss, error, mape
 
     def Loop(self, epochs, trainloader, testloader, scheduler=None):

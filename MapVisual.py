@@ -32,11 +32,14 @@ img_c = img * (img_mask // 255 == 0)
 img_c = transform(img_c)
 
 
-model = CBAMDensenet121()
-pred_dict = torch.load('CBAMDensenet121_3CWithMask/best_model.ckpt')['state_dict']
+model = SEDensenet121()
+print(model)
+# pred_dict = torch.load('/home/benkesheng/BMI_DETECT/NewExperiment/Models/Densenet121_3CWithMask/model_epoch_50.ckpt')['state_dict']
+pred_dict = torch.load('/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEDensenet121_3CWithMask_128_tran/model_epoch_50.ckpt')['state_dict']
 model.load_state_dict(pred_dict)
+print(model)
 # print(model.features.denseblock1)
-conv_out = LayerActivations(model.features.transition1.conv)# .denseblock1.denselayer6.conv2)  #
+conv_out = LayerActivations(model.features.denseblock4.denselayer1.relu1)  #
 out = model(torch.unsqueeze(img_c, dim=0))
 conv_out.remove()
 xs = torch.squeeze(conv_out.features.detach()).numpy()
@@ -44,13 +47,13 @@ print(xs.shape)
 fig, ax = plt.subplots(figsize=(10, 10))
 plt.axis('off')
 fig.tight_layout()
-fig.subplots_adjust(wspace = 0, hspace = 0,left=None, bottom=None, right=None, top=None)
+fig.subplots_adjust(wspace=0, hspace=0, left=None, bottom=None, right=None, top=None)
 for i,x in enumerate(xs):
     ax = fig.add_subplot(8, 8, i+1, xticks=[], yticks=[])
     ax.imshow(xs[i])
-    if i==63:
+    if i == 63:
         break
-fig.savefig('kkkk.jpg')
-
+# fig.savefig('kkkk.jpg')
+#
 plt.show()
 

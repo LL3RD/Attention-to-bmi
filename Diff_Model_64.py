@@ -4,11 +4,11 @@ import torch.optim as optim
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3'
 setup_seed(0)
-Nets = [Resnext50(),]
+Nets = [Resnet101()]
 save_dir = '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/ReBuild_Models'
 dataset_root = '/home/ungraduate/hjj/BMI_DETECT/datasets'
-Nets_save_dir = ['Resnext50',]
-DEVICE = torch.device("cuda:0")
+Nets_save_dir = ['Resnet101']
+DEVICE = torch.device("cuda:1")
 
 
 train_dataset = OurDatasets(os.path.join(dataset_root, 'Image_train'), mode='3CWithMask', set='Our')

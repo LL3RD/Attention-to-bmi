@@ -8,6 +8,7 @@ import torch.utils.checkpoint as cp
 from SENET import SELayer
 from CBAM import CBAM
 from SKNet import SKLayer
+from utils.skeleton_feat import genSkeletons
 
 
 class _DenseLayer(nn.Module):  # 这个就跟ResNet 的bottleneck一样
@@ -134,6 +135,110 @@ class _Transition(nn.Sequential):  # 过渡层，防止channel太多
         self.add_module('pool', nn.AvgPool2d(kernel_size=2, stride=2))
         # if mode == 'se':
         #     self.add_module('se', SELayer(channel=num_output_features)),
+
+class KDenseNet(nn.Module):
+    def __init__(self, growth_rate=32, block_config=(6, 12, 24, 16),
+                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1, memory_efficient=True, deep_stem=False,
+                 mode=None):
+        super(KDenseNet, self).__init__()
+
+        if deep_stem:
+            self.features = nn.Sequential(OrderedDict([
+                ('conv0_3', nn.Conv2d(3, num_init_features, kernel_size=3, stride=2,
+                                      padding=1, bias=False)),
+                ('norm0_3', nn.BatchNorm2d(num_init_features)),
+                ('relu0_3', nn.ReLU(inplace=True)),
+
+                ('conv1', nn.Conv2d(num_init_features, num_init_features, kernel_size=3, stride=1,
+                                    padding=1, bias=False)),
+                ('norm1', nn.BatchNorm2d(num_init_features)),
+                ('relu1', nn.ReLU(inplace=True)),
+
+                ('conv2', nn.Conv2d(num_init_features, num_init_features, kernel_size=3, stride=1,
+                                    padding=1, bias=False)),
+                ('norm2', nn.BatchNorm2d(num_init_features)),
+                ('relu2', nn.ReLU(inplace=True)),
+                ('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
+            ]))
+        else:
+            self.features = nn.Sequential(OrderedDict([
+                ('conv0', nn.Conv2d(3, num_init_features, kernel_size=7, stride=2,
+                                    padding=3, bias=False)),
+                ('norm0', nn.BatchNorm2d(num_init_features)),
+                ('relu0', nn.ReLU(inplace=True)),
+                ('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
+            ]))
+
+        # self.features.add_module('se', SELayer(num_init_features))
+
+        num_features = num_init_features + 55
+        self.after = nn.Sequential()
+        for i, num_layers in enumerate(block_config):
+            block = _DenseBlock(
+                num_layers=num_layers,
+                num_input_features=num_features,
+                bn_size=bn_size,
+                growth_rate=growth_rate,
+                drop_rate=drop_rate,
+                memory_efficient=memory_efficient,
+                mode=mode
+            )
+            self.after.add_module('denseblock%d' % (i + 1), block)
+            num_features = num_features + num_layers * growth_rate
+            # if mode == 'se':
+            #     self.features.add_module('SELayer%d' % (i + 1), SELayer(num_features))
+            # elif mode == 'cbam':
+            #     self.features.add_module('CBAMLayer%d' % (i + 1), CBAM(num_features))
+            # elif mode == 'sk':
+            #     self.features.add_module('SKLayer%d' % (i + 1), SKLayer(num_features, G=1))
+
+            if i != len(block_config) - 1:  # 如果不是最后一层
+                trans = _Transition(num_input_features=num_features,
+                                    num_output_features=num_features // 2, mode=mode)
+                self.after.add_module('transition%d' % (i + 1), trans)
+                num_features = num_features // 2
+
+                if mode == 'se':
+                    self.after.add_module('SELayer%d' % (i + 1), SELayer(num_features))
+                elif mode == 'cbam':
+                    self.after.add_module('CBAMLayer%d' % (i + 1), CBAM(num_features))
+                elif mode == 'sk':
+                    self.after.add_module('SKLayer%d' % (i + 1), SKLayer(num_features, G=1))
+
+        self.after.add_module('norm5', nn.BatchNorm2d(num_features))
+
+        self.classifier = nn.Sequential(
+            nn.Linear(num_features, num_features // 2),
+            nn.ReLU(inplace=True),
+            nn.Linear(num_features // 2, num_features // 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(num_features // 4, num_features // 8),
+            nn.ReLU(inplace=True),
+            nn.Linear(num_features // 8, num_classes),
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x, kpts=None):
+        features = self.features(x)
+        out = F.relu(features, inplace=True)
+        if kpts is not None:
+            out = self.after(torch.cat((out, kpts), 1))
+
+
+        # out = nn.Conv2d(1024, 1, kernel_size=1, stride=1, bias=False)(out)
+        # out = nn.ReLU()(out)
+        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = torch.flatten(out, 1)
+        out = self.classifier(out)
+        return out
+
+
 
 
 class DenseNet(nn.Module):
@@ -262,6 +367,10 @@ def SEDensenet169(mode='se', **kwargs):
                      **kwargs)
 
 
+def KDensenet121(model='se',**kwargs):
+    return KDenseNet(32, (6, 12, 32, 32), 64, mode=model,**kwargs)
+
+
 def CBAMDensenet121(mode='cbam', **kwargs):
     return _densenet('cbamdensenet121', 32, (6, 12, 24, 16), 64, mode,
                      **kwargs)
@@ -270,3 +379,6 @@ def CBAMDensenet121(mode='cbam', **kwargs):
 def SKDensenet121(mode='sk',**kwargs):
     return _densenet('skdensenet121', 32, (6, 12, 24, 16), 64, mode,
                      **kwargs)
+
+
+print(KDensenet121())

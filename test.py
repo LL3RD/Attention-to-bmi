@@ -10,20 +10,44 @@ from torchvision import models
 import numpy as np
 import random
 
-model = SEDensenet121()
+# model = SEResnext101()
+# model.load_state_dict(torch.load(
+#     '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEResnext101/best_model.ckpt')[
+#                           'state_dict'])
+
+# root = '/home/ungraduate/hjj/BMI_DETECT/datasets/'
+# failures = ['000534_F_15_162560_6577090.jpg']
+#
+# for fail in failures:
+#     img = cv2.imread(root + 'Image_test/' + fail, flags=1)[:, :, ::-1]
+#     img_mask = cv2.imread(root + 'Image_test_mask/'+'Mask_'+fail)
+#     img_c = img * (img_mask // 255 == 0)
+#     cv2.imwrite('FailureDemo/'+'Mask_' + fail, img_c[:,:,::-1])
+
+
+# Failure And Precise
+model = Resnet101()
 model.load_state_dict(torch.load(
-    '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEDensenet121_3CWithMask_128_tran/model_epoch_50.ckpt')[
+    '/home/benkesheng/BMI_DETECT/NewExperiment/Models/Resnet101_3CWithMask/model_epoch_50.ckpt')[
                           'state_dict'])
 dataset = OurDatasets('/home/ungraduate/hjj/BMI_DETECT/datasets/Image_test', mode='3CWithMask', set='Our')
 test_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
 model.eval()
+import time
+sum = 0
 with torch.no_grad():
     for img, (name, targ) in test_loader:
+
+        t = time.time()
         out = model(img)
         out = out.detach().cpu().numpy()
         target = targ.detach().cpu().numpy()
-        if abs(out - target) <= 0.5:
-            print(name[0], '\tTruth:', target, '\tPred:', out)
+        sum += time.time()-t
+        print(sum)
+    print(sum/len(test_loader))
+#         if abs(out - target) <= 0.5:
+#             print(name[0], '\tTruth:', target, '\tPred:', out)
+
 
 # for x,y in test_loader:
 #     print(x.shape)

@@ -2,10 +2,13 @@ from Resnet import ResNet
 from Resnet import Bottleneck
 from SENET import SEBottleneck
 from CBAM import CBAMBottleneck
+from seresnext import seresnext101_32x8d
 import torch.nn as nn
 from Densenet import *
 from SKNet import SKNet
 import torchvision.models as models
+from cnn_finetune import make_model
+from thop import profile
 
 
 def SKNet101(num_classes=1):
@@ -45,13 +48,13 @@ def AlexNet(num_classes=1):
     model = models.alexnet(pretrained=True)
     num_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
-        nn.Linear(num_features,  num_features // 2),
-        nn.ReLU(inplace=True),
-        nn.Linear(num_features // 2, num_features // 4),
-        nn.ReLU(inplace=True),
-        nn.Linear(num_features // 4, num_features // 8),
-        nn.ReLU(inplace=True),
-        nn.Linear(num_features // 8, num_classes),
+            nn.Linear(9216, 512),
+            nn.ReLU(True),
+            nn.Linear(512, 256),
+            nn.ReLU(True),
+            nn.Linear(256, 128),
+            nn.ReLU(True),
+            nn.Linear(128, 1)
     )
     return model
 
@@ -59,9 +62,7 @@ def AlexNet(num_classes=1):
 def VGG16(num_classes=1):
     model = models.vgg16(pretrained=True)
     model.classifier = nn.Sequential(
-        nn.Linear(25088, 1024),
-        nn.ReLU(True),
-        nn.Linear(1024, 512),
+        nn.Linear(25088, 512),
         nn.ReLU(True),
         nn.Linear(512, 256),
         nn.ReLU(True),
@@ -98,12 +99,23 @@ def MobileNet(num_classes=1):
     return model
 
 
+# def Densenet121(num_classes=1):
+#     model = models.densenet121(pretrained=True)
+#     model.classifier =  nn.Sequential(
+#         nn.Linear(1024, 512),
+#         nn.ReLU(True),
+#         nn.Linear(512, 256),
+#         nn.ReLU(True),
+#         nn.Linear(256, 128),
+#         nn.ReLU(True),
+#         nn.Linear(128, num_classes)
+#     )
+#     return model
+
 def Resnext101(num_classes=1):
     model = models.resnext101_32x8d(pretrained=True)
     model.fc = nn.Sequential(
-        nn.Linear(2048, 1024),
-        nn.ReLU(True),
-        nn.Linear(1024, 512),
+        nn.Linear(2048, 512),
         nn.ReLU(True),
         nn.Linear(512, 256),
         nn.ReLU(True),
@@ -111,3 +123,42 @@ def Resnext101(num_classes=1):
     )
     return model
 
+
+def Resnext50(num_classes=1):
+    model = models.resnext50_32x4d(pretrained=True)
+    model.fc = nn.Sequential(
+        nn.Linear(2048,512),
+        nn.ReLU(True),
+        nn.Linear(512, 256),
+        nn.ReLU(True),
+        nn.Linear(256, num_classes),
+    )
+    return model
+
+
+def SEResnext101(num_classes=1):
+    model = seresnext101_32x8d(num_classes=num_classes)
+    return model
+
+
+# print(Resnet101())
+# Nets = [SEDensenet121(), AlexNet(),MobileNet(), VGG16(), GoogleNet(), Resnext50(), Resnet101()]
+# Nets_names = ['SEDensenet121()', 'AlexNet()', 'MobileNet()','VGG16()', 'GoogleNet()', 'Resnext50()', 'Resnet101()']
+# input = torch.randn(1, 3, 224, 224)
+# for Net, Name in zip(Nets,Nets_names):
+#     num_params = 0
+#     for param in Net.parameters():
+#         num_params += param.numel()
+#     print(Name, num_params / 1e6)
+#     flops, params = profile(Net, inputs=(input,))
+#     print(Name, flops / 1e9, params / 1e6)
+
+
+# input = torch.randn(1, 3, 224, 224)
+# flops, params = profile(AlexNet(), inputs=(input, ))
+# print('alexnet: ', flops/1e6, params/1e6)
+# flops, params = profile(models.alexnet(), inputs=(input, ))
+# print('AlexNet: ', flops/1e6, params/1e6)
+#
+# print(models.alexnet())
+# print(AlexNet())
