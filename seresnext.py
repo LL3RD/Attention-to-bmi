@@ -123,11 +123,13 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(4, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.inplanes = self.inplanes
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
                                        dilate=replace_stride_with_dilation[0])
@@ -137,13 +139,13 @@ class ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Sequential(
-            nn.Linear(512 * block.expansion, 256 * block.expansion),
-            nn.ReLU(inplace=True),
-            nn.Linear(256 * block.expansion, 128 * block.expansion),
+            nn.Linear(512 * block.expansion, 128 * block.expansion),
             nn.ReLU(inplace=True),
             nn.Linear(128 * block.expansion, 64 * block.expansion),
             nn.ReLU(inplace=True),
-            nn.Linear(64 * block.expansion, num_classes),
+            nn.Linear(64 * block.expansion, 32 * block.expansion),
+            nn.ReLU(inplace=True),
+            nn.Linear(32 * block.expansion, num_classes),
         )
 
         for m in self.modules():
@@ -188,12 +190,16 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x):
+    def _forward_impl(self, x, kpts=None):
         # See note [TorchScript super()]
+        if kpts is not None:
+            x = torch.cat((x, kpts), 1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
+
+
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -206,13 +212,14 @@ class ResNet(nn.Module):
 
         return x
 
-    def forward(self, x):
-        return self._forward_impl(x)
+    def forward(self, x, kpts=None):
+        return self._forward_impl(x, kpts)
 
 
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
     model = ResNet(block, layers, **kwargs)
     return model
+
 
 def resnext50_32x4d(pretrained=False, progress=True, **kwargs):
     r"""ResNeXt-50 32x4d model from

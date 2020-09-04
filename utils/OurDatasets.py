@@ -6,17 +6,16 @@ import os
 import re
 import cv2
 import json
-from skeleton_feat import *
+from utils.skeleton_feat import *
 
 IMG_MEAN = [0.485, 0.456, 0.406]
 IMG_STD = [0.229, 0.224, 0.225]
 IMG_SIZE = 224
 
-
 def get_dataloader(batch_size, args,):
     train_dataset = OurDatasets(args.root, 'Image_train', mode=args.datasetmode, set=args.set, kpts_fea=args.kpts)
-    test_dataset = OurDatasets(args.root, 'Image_test', mode=args.datasetmode, set=args.set, kpts_fea=args.kpts)
-    val_dataset = OurDatasets(args.root, 'Image_val', mode=args.datasetmode, set=args.set, kpts_fea=args.kpts)
+    test_dataset = OurDatasets(args.root, 'Image_test', mode=args.datasetmode, set=args.set, kpts_fea=args.kpts, partition='test')
+    val_dataset = OurDatasets(args.root, 'Image_val', mode=args.datasetmode, set=args.set, kpts_fea=args.kpts, partition='val')
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                                num_workers=args.workers)
@@ -27,7 +26,7 @@ def get_dataloader(batch_size, args,):
 
 
 class OurDatasets(data.Dataset):
-    def __init__(self, root, file, mode, set='Our', kpts_fea=False):
+    def __init__(self, root, file, mode, set='Our', kpts_fea=False, partition='train'):
         self.file = os.path.join(root, file)
         self.img_names = os.listdir(self.file)
         # print(os.path.join(root, file[6:]+'_kpts.json'))
@@ -35,14 +34,28 @@ class OurDatasets(data.Dataset):
             self.img_kpts = json.load(f)
         self.mode = mode
         self.set = set
-        self.transform = transforms.Compose([
-            transforms.ToPILImage(),
-            Resize(IMG_SIZE),
-            transforms.Pad(IMG_SIZE),
-            transforms.CenterCrop(IMG_SIZE),
-            transforms.ToTensor(),
-        ])
+        if partition == 'train':
+            self.transform = transforms.Compose([
+                transforms.ToPILImage(),
+                Resize(IMG_SIZE),
+                transforms.Pad(IMG_SIZE),
+                transforms.CenterCrop(IMG_SIZE),
+                # argue
+                # transforms.RandomHorizontalFlip(p=0.5),
+                # transforms.ColorJitter(brightness=0.5, contrast=0.5),
+                transforms.ToTensor(),
+            ])
+        else:
+            self.transform = transforms.Compose([
+                transforms.ToPILImage(),
+                Resize(IMG_SIZE),
+                transforms.Pad(IMG_SIZE),
+                transforms.CenterCrop(IMG_SIZE),
+                transforms.ToTensor(),
+            ])
+
         self.kpts_fea = kpts_fea
+
 
     def __len__(self):
         return len(self.img_names)
@@ -55,13 +68,16 @@ class OurDatasets(data.Dataset):
         h, w, _ = img.shape
 
         if self.kpts_fea == True:
+
+            img_size = 224
             kpts = self.img_kpts[img_name]
             m1 = stride_matrix(IMG_SIZE / h, (IMG_SIZE - w * IMG_SIZE / h) / 2)
             warped_kpts = warpAffineKpts([kpts], m1)
-            m2 = stride_matrix(56 / IMG_SIZE, (56 - IMG_SIZE * 56 / IMG_SIZE) / 2)
+            m2 = stride_matrix(img_size / IMG_SIZE, (img_size - IMG_SIZE * img_size / IMG_SIZE) / 2)
             warped_kpts = warpAffineKpts(warped_kpts, m2)
-            Skeletons = genSkeletons(warped_kpts, 56, 56, ).transpose(2, 0, 1)
+            Skeletons = genSkeletons(warped_kpts, img_size, img_size, ).transpose(2, 0, 1)
             Skeletons = torch.from_numpy(Skeletons)
+            Skeletons = torch.unsqueeze(torch.sum(Skeletons, 0), 0)
 
         if self.mode == '4C':
             img = self.transform(img)
@@ -73,6 +89,12 @@ class OurDatasets(data.Dataset):
         elif self.mode == '3CWithMask':
             img_mask = cv2.imread(os.path.join(self.file + '_mask', img_mask_name))
             img_c = img * (img_mask // 255 == 0)
+
+            # set background to white
+            # img_mask = img_mask * (img_mask // 255 == 1)
+            # img_c = img_c + img_mask
+
+
             img_c = self.transform(img_c)
             img_c = transforms.Normalize(IMG_MEAN, IMG_STD)(img_c)
 

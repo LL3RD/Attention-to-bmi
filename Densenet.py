@@ -138,7 +138,7 @@ class _Transition(nn.Sequential):  # 过渡层，防止channel太多
 
 class KDenseNet(nn.Module):
     def __init__(self, growth_rate=32, block_config=(6, 12, 24, 16),
-                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1, memory_efficient=True, deep_stem=False,
+                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1, memory_efficient=True, deep_stem=True,
                  mode=None):
         super(KDenseNet, self).__init__()
 
@@ -225,11 +225,15 @@ class KDenseNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x, kpts=None):
+        # 4C
+        # if kpts is not None:
+        #     x = torch.cat((x, kpts),1)
         features = self.features(x)
-        out = F.relu(features, inplace=True)
-        if kpts is not None:
-            out = self.after(torch.cat((out, kpts), 1))
 
+        # features = self.after(features)
+        if kpts is not None:
+            out = self.after(torch.cat((features, kpts), 1))
+        out = F.relu(out, inplace=True)
 
         # out = nn.Conv2d(1024, 1, kernel_size=1, stride=1, bias=False)(out)
         # out = nn.ReLU()(out)
@@ -320,6 +324,15 @@ class DenseNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(num_features // 8, num_classes),
         )
+        # self.classifier = nn.Sequential(
+        #     nn.Conv2d(num_features, num_features//2, kernel_size=1, stride=1, padding=0, bias=False),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(num_features // 2, num_features // 4, kernel_size=1, stride=1, padding=0, bias=False),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(num_features // 4, num_features // 8, kernel_size=1, stride=1, padding=0, bias=False),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(num_features // 8, num_classes, kernel_size=1, stride=1, padding=0, bias=False),
+        # )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -335,8 +348,11 @@ class DenseNet(nn.Module):
         # out = nn.Conv2d(1024, 1, kernel_size=1, stride=1, bias=False)(out)
         # out = nn.ReLU()(out)
         out = F.adaptive_avg_pool2d(out, (1, 1))
+        # print(out.shape)
         out = torch.flatten(out, 1)
         out = self.classifier(out)
+        # out = torch.unsqueeze(torch.squeeze(out), 1)
+        # print(out.shape)
         return out
 
 
@@ -368,7 +384,7 @@ def SEDensenet169(mode='se', **kwargs):
 
 
 def KDensenet121(model='se',**kwargs):
-    return KDenseNet(32, (6, 12, 32, 32), 64, mode=model,**kwargs)
+    return KDenseNet(32, (6, 12, 24, 16), 64, mode=model,**kwargs)
 
 
 def CBAMDensenet121(mode='cbam', **kwargs):
@@ -381,4 +397,4 @@ def SKDensenet121(mode='sk',**kwargs):
                      **kwargs)
 
 
-print(KDensenet121())
+# print(KDensenet121())

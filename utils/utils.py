@@ -7,13 +7,6 @@ import torch
 from torchvision import transforms
 
 
-def varname(p):
-    for line in inspect.getframeinfo(inspect.currentframe().f_back)[3]:
-        m = re.search(r'\bvarname\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)', line)
-        if m:
-            return m.group(1)
-
-
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true, y_pred = np.array(y_true), np.array(y_pred)
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100

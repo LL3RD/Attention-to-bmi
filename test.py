@@ -10,44 +10,68 @@ from torchvision import models
 import numpy as np
 import random
 
+
+
+
 # model = SEResnext101()
 # model.load_state_dict(torch.load(
 #     '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEResnext101/best_model.ckpt')[
 #                           'state_dict'])
 
-# root = '/home/ungraduate/hjj/BMI_DETECT/datasets/'
-# failures = ['000534_F_15_162560_6577090.jpg']
+root = '/home/ungraduate/hjj/BMI_DETECT/datasets/'
+failures = ['000871_F_24_160020_5805983.jpg', '001903_F_29_167640_5805983.jpg', '002267_M_34_193040_5760623.jpg']
+
+for fail in failures:
+    img = cv2.imread(root + 'Image_test/' + fail, flags=1)[:, :, ::-1]
+    img_mask = cv2.imread(root + 'Image_test_mask/'+'Mask_'+fail)
+    img_c = img * (img_mask // 255 == 0)
+    cv2.imwrite('FailureDemo/'+'Mask_' + fail, img_c[:,:,::-1])
+
+
+# def test(model, device, test_loader):
+#     model.eval()
+#     model = model.to(device)
+#     pred = []
+#     targ = []
+#     with torch.no_grad():
+#         for i, (x,(sex,y)) in enumerate(test_loader):
+#             x, y = x.to(device), y.to(device)
+#             # optimizer.zero_grad()
+#             y_pred = model(x)
+#             pred.append(y_pred.item())
+#             targ.append(y.item())
+#     MAE = mean_absolute_error(targ, pred)
+#     MAPE = mean_absolute_percentage_error(targ, pred)
+#     print('\nTest MAE:{}\t Test MAPE:{}'.format(MAE, MAPE))
+#     return MAE, MAPE
 #
-# for fail in failures:
-#     img = cv2.imread(root + 'Image_test/' + fail, flags=1)[:, :, ::-1]
-#     img_mask = cv2.imread(root + 'Image_test_mask/'+'Mask_'+fail)
-#     img_c = img * (img_mask // 255 == 0)
-#     cv2.imwrite('FailureDemo/'+'Mask_' + fail, img_c[:,:,::-1])
-
-
-# Failure And Precise
-model = Resnet101()
-model.load_state_dict(torch.load(
-    '/home/benkesheng/BMI_DETECT/NewExperiment/Models/Resnet101_3CWithMask/model_epoch_50.ckpt')[
-                          'state_dict'])
-dataset = OurDatasets('/home/ungraduate/hjj/BMI_DETECT/datasets/Image_test', mode='3CWithMask', set='Our')
-test_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
-model.eval()
-import time
-sum = 0
-with torch.no_grad():
-    for img, (name, targ) in test_loader:
-
-        t = time.time()
-        out = model(img)
-        out = out.detach().cpu().numpy()
-        target = targ.detach().cpu().numpy()
-        sum += time.time()-t
-        print(sum)
-    print(sum/len(test_loader))
-#         if abs(out - target) <= 0.5:
+# # Failure And Precise
+# model = SEDensenet121()
+# model.load_state_dict(torch.load(
+#     '/home/ungraduate/hjj/BMI_DETECT/NewExperiment/Models/SEDensenet121_3CWithMask_128_tran/model_epoch_50.ckpt')[
+#                           'state_dict'])
+# dataset = OurDatasets('/home/ungraduate/hjj/BMI_DETECT/datasets','Image_test', mode='3CWithMask', set='Our', partition='test')
+# test_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
+# model.eval()
+# # test(model, torch.device("cuda:0"), test_loader)
+#
+#
+#
+# import time
+# sum = 0
+# with torch.no_grad():
+#     for img, (name, targ) in test_loader:
+#
+#         t = time.time()
+#         out = model(img)
+#         out = out.detach().cpu().numpy()
+#         target = targ.detach().cpu().numpy()
+#         sum += time.time()-t
+#         # print(sum)
+#
+#         if abs(out - target) >= 10:
 #             print(name[0], '\tTruth:', target, '\tPred:', out)
-
+#     print(sum/len(test_loader))
 
 # for x,y in test_loader:
 #     print(x.shape)
