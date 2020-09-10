@@ -5,7 +5,7 @@ from sklearn.metrics import mean_absolute_error
 import numpy as np
 import torch
 from torchvision import transforms
-
+from torch.backends import cudnn
 
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true, y_pred = np.array(y_true), np.array(y_pred)
@@ -13,11 +13,14 @@ def mean_absolute_percentage_error(y_true, y_pred):
 
 
 def setup_seed(seed):
+    cudnn.benchmark = False
+    cudnn.deterministic = True
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
+    # torch.cuda.manual_seed_all(seed)
 
 
 def _get_image_size(img):

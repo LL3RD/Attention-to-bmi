@@ -102,14 +102,14 @@ def MobileNet(num_classes=1):
 def Densenet121(num_classes=1):
     model = models.densenet121(pretrained=True)
     model.classifier =  nn.Sequential(
-        # nn.Linear(1024, 512),
-        # nn.ReLU(True),
-        # nn.Linear(512, 256),
-        # nn.ReLU(True),
-        # nn.Linear(256, 128),
-        # nn.ReLU(True),
-        # nn.Linear(128, num_classes)
-        nn.Linear(1024, num_classes)
+        nn.Linear(1024, 512),
+        nn.ReLU(True),
+        nn.Linear(512, 256),
+        nn.ReLU(True),
+        nn.Linear(256, 128),
+        nn.ReLU(True),
+        nn.Linear(128, num_classes)
+        # nn.Linear(1024, num_classes)
     )
     return model
 

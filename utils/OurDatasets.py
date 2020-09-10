@@ -6,10 +6,12 @@ import os
 import re
 import cv2
 import json
-from utils.skeleton_feat import *
+from skeleton_feat import *
 
 IMG_MEAN = [0.485, 0.456, 0.406]
 IMG_STD = [0.229, 0.224, 0.225]
+Gray_IMG_MEAN = [0.08499171, 0.08499171, 0.08499171]
+Gray_IMG_STD = [0.17356646, 0.17356646, 0.17356646]
 IMG_SIZE = 224
 
 def get_dataloader(batch_size, args,):
@@ -30,8 +32,10 @@ class OurDatasets(data.Dataset):
         self.file = os.path.join(root, file)
         self.img_names = os.listdir(self.file)
         # print(os.path.join(root, file[6:]+'_kpts.json'))
-        with open(os.path.join(root, file[6:] + '_kpts.json')) as f:
-            self.img_kpts = json.load(f)
+
+        if kpts_fea:
+            with open(os.path.join(root, file[6:] + '_kpts.json')) as f:
+                self.img_kpts = json.load(f)
         self.mode = mode
         self.set = set
         if partition == 'train':
@@ -42,7 +46,9 @@ class OurDatasets(data.Dataset):
                 transforms.CenterCrop(IMG_SIZE),
                 # argue
                 # transforms.RandomHorizontalFlip(p=0.5),
+                # transforms.RandomRotation((-15,15)),
                 # transforms.ColorJitter(brightness=0.5, contrast=0.5),
+                # transforms.Grayscale(),
                 transforms.ToTensor(),
             ])
         else:
@@ -51,6 +57,7 @@ class OurDatasets(data.Dataset):
                 Resize(IMG_SIZE),
                 transforms.Pad(IMG_SIZE),
                 transforms.CenterCrop(IMG_SIZE),
+                # transforms.Grayscale(),
                 transforms.ToTensor(),
             ])
 
@@ -94,9 +101,19 @@ class OurDatasets(data.Dataset):
             # img_mask = img_mask * (img_mask // 255 == 1)
             # img_c = img_c + img_mask
 
-
             img_c = self.transform(img_c)
+            # print(img_c.shape)
+            # Normal
             img_c = transforms.Normalize(IMG_MEAN, IMG_STD)(img_c)
+
+            # expand to 3dim
+            # img_c = torch.cat([img_c, img_c, img_c],0 )
+            # gray normalize
+            # img_c = transforms.Normalize(Gray_IMG_MEAN, Gray_IMG_STD)(img_c)
+
+            # gray normalize 1dim
+            # img_c = transforms.Normalize((Gray_IMG_MEAN[0],), (Gray_IMG_STD[0],))(img_c)
+
 
         elif self.mode == '3C':
             img = self.transform(img)
