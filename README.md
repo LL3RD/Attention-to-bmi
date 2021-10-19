@@ -6,7 +6,8 @@ Body Mass Index (BMI) has been widely used as an indicator to evaluate the healt
 Our code is tested with PyTorch 1.4.0, CUDA 10.0 and Python 3.6. It may work with other versions.
 
 You will need to install some python dependencies(either 'conda install' or 'pip install')
-''' 
+
+'''
 scikit-learn
 scipy
 tensorboardX
@@ -15,6 +16,7 @@ opencv-python
 
 ## Usage
 ### Training
+
 '''
 python main.py --set Ours --root $YOU_PATH$ -b 32
 '''
